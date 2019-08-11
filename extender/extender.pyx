@@ -10,7 +10,6 @@ import subprocess
 import os
 import re
 import numpy as np
-from scipy.special import softmax
 import heapq
 import psutil
 import sys
@@ -476,7 +475,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--complex-threshold",
-        help="[0-100] higher values indicate less complexity",
+        help="[0-100] higher values indicate less complexity. -1 to disable",
         nargs="?",
         default=COMPLEX_THRESHOLD,
         type=int
@@ -521,10 +520,12 @@ if __name__ == "__main__":
 
     maxlength = 0
     _, filtered_reads = tempfile.mkstemp()
-    # print(subprocess.run(['./prinseq-lite.pl', '-fastq', args.reads, '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null']).args)
-    filtered_reads = filtered_reads + '.fastq'
-    # print(filtered_reads)
-    # args.reads = filtered_reads
+
+    if COMPLEX_THRESHOLD != -1:
+        subprocess.run(['./prinseq-lite.pl', '-fastq', args.reads, '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null']).args
+        filtered_reads = filtered_reads + '.fastq'
+
+        args.reads = filtered_reads
     with open(args.reads) as reads:
         lines = []
         for line in reads:
