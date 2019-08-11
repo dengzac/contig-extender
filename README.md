@@ -1,4 +1,5 @@
 # contig-extender
+![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
 * Python 3 (with development headers)
 * Cython
