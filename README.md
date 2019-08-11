@@ -35,6 +35,7 @@ optional arguments:
   --extend-tolerance [EXTEND_TOLERANCE]
                         lower numbers require more reads to extend (default:
                         2.5)
+                        threshold score is proportional to 10^(-tol)
   --coverage [COVERAGE]
                         estimate of coverage (default: 10)
   --min-branch-score [MIN_BRANCH_SCORE]
@@ -48,6 +49,8 @@ optional arguments:
   --threads [THREADS]   number of threads to use in computing alignments
                         (default: auto)
   --complex-threshold [COMPLEX_THRESHOLD]
-                        [0-100] higher values indicate less complexity. -1 to disable
+                        [0-100] higher values indicate less complexity. 
+                        -1 to disable
+                        Uses DUST score from prinseq
                         (default: 15)
 ```
