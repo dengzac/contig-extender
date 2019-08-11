@@ -1,10 +1,10 @@
 # contig-extender
 ## Dependencies
-..* Python 3 (with development headers)
-..* Cython
-..* numpy
-..* setuptools
-..* gcc
+* Python 3 (with development headers)
+* Cython
+* numpy
+* setuptools
+* gcc
 
 ## Building
 ```
@@ -13,6 +13,7 @@ python setup.py build
 Executable will be named extender/extend
 
 ## Usage
+```
 usage: extend [-h] [--min-overlap-length [MIN_OVERLAP_LENGTH]]
               [--extend-tolerance [EXTEND_TOLERANCE]] [--coverage [COVERAGE]]
               [--min-branch-score [MIN_BRANCH_SCORE]]
@@ -48,3 +49,4 @@ optional arguments:
   --complex-threshold [COMPLEX_THRESHOLD]
                         [0-100] higher values indicate less complexity
                         (default: 15)
+```
