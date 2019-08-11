@@ -1,4 +1,7 @@
 # contig-extender
+## Description
+ContigExtender, was developed to extend contigs, complementing de novo assembly. ContigExtender employs a novel recursive Overlap Layout Candidates (r-OLC) strategy that explores multiple extending paths to achieve longer and highly accurate contigs. ContigExtender is effective for extending contigs significantly in in silico synthesized and real metagenomics datasets.
+
 ![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
 * Python 3 (with development headers)
@@ -56,3 +59,10 @@ optional arguments:
                         Uses DUST score from prinseq
                         (default: 15)
 ```
+
+## Examples
+The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
+```
+./extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
+```
+The output contig(s) will be found in the ```BKV_250_50_0.01_0__BKV_seed_1000_867/contigs``` folder as FASTA files. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
