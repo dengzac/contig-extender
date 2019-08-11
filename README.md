@@ -1,4 +1,8 @@
 # contig-extender
+## Description
+ContigExtender, was developed to extend contigs, complementing de novo assembly. ContigExtender employs a novel recursive Overlap Layout Candidates (r-OLC) strategy that explores multiple extending paths to achieve longer and highly accurate contigs. ContigExtender is effective for extending contigs significantly in in silico synthesized and real metagenomics datasets.
+
+![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
 * Python 3 (with development headers)
 * Cython
@@ -8,6 +12,8 @@
 
 ## Building
 ```
+git clone https://github.com/dengzac/contig-extender.git
+cd contig-extender
 python setup.py build
 ```
 Executable will be named extender/extend
@@ -34,6 +40,7 @@ optional arguments:
   --extend-tolerance [EXTEND_TOLERANCE]
                         lower numbers require more reads to extend (default:
                         2.5)
+                        threshold score is proportional to 10^(-tol)
   --coverage [COVERAGE]
                         estimate of coverage (default: 10)
   --min-branch-score [MIN_BRANCH_SCORE]
@@ -47,6 +54,15 @@ optional arguments:
   --threads [THREADS]   number of threads to use in computing alignments
                         (default: auto)
   --complex-threshold [COMPLEX_THRESHOLD]
-                        [0-100] higher values indicate less complexity
+                        [0-100] higher values indicate less complexity. 
+                        -1 to disable
+                        Uses DUST score from prinseq
                         (default: 15)
 ```
+
+## Examples
+The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
+```
+./extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
+```
+The output contig(s) will be found in the ```BKV_250_50_0.01_0__BKV_seed_1000_867/contigs``` folder as FASTA files. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
