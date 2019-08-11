@@ -9,6 +9,8 @@
 
 ## Building
 ```
+git clone https://github.com/dengzac/contig-extender.git
+cd contig-extender
 python setup.py build
 ```
 Executable will be named extender/extend
