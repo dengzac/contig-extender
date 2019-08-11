@@ -47,6 +47,6 @@ optional arguments:
   --threads [THREADS]   number of threads to use in computing alignments
                         (default: auto)
   --complex-threshold [COMPLEX_THRESHOLD]
-                        [0-100] higher values indicate less complexity
+                        [0-100] higher values indicate less complexity. -1 to disable
                         (default: 15)
 ```
