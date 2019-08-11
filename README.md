@@ -4,7 +4,7 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 
 ![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
-* Python 3 (with development headers)
+* Python 3.2+ (with development headers)
 * Cython
 * numpy
 * setuptools
