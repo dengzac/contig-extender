@@ -61,8 +61,8 @@ optional arguments:
 ```
 
 ## Examples
-The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
+The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command, specifying the correct location of the ```extend``` program:
 ```
-./extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
+extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
 ```
 The output contig(s) will be found in the ```BKV_250_50_0.01_0__BKV_seed_1000_867/contigs``` folder as FASTA files. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
