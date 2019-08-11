@@ -18,6 +18,8 @@ python setup.py build
 ```
 Executable will be named extender/extend
 
+A Python extension is also built but no Python interface is available currently so it can be ignored.
+
 ## Usage
 ```
 usage: extend [-h] [--min-overlap-length [MIN_OVERLAP_LENGTH]]
