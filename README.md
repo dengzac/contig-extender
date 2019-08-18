@@ -4,7 +4,7 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 
 ![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
-* Python 3 (with development headers)
+* Python 3.2+ (with development headers)
 * Cython
 * numpy
 * setuptools
@@ -17,6 +17,8 @@ cd contig-extender
 python setup.py build
 ```
 Executable will be named extender/extend
+
+A Python extension is also built but no Python interface is available currently so it can be ignored.
 
 ## Usage
 ```
@@ -61,8 +63,8 @@ optional arguments:
 ```
 
 ## Examples
-The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
+The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command, specifying the correct location of the ```extend``` program:
 ```
-./extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
+extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
 ```
 The output contig(s) will be found in the ```BKV_250_50_0.01_0__BKV_seed_1000_867/contigs``` folder as FASTA files. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
