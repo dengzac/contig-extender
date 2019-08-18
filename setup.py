@@ -7,19 +7,21 @@ from Cython.Build import cythonize
 import numpy as np
 ext = cythonize('extender/extender.pyx')
 
-flags = subprocess.run(['python3-config', '--cflags', '--ldflags'], stdout=subprocess.PIPE).stdout.decode()
-flags = flags.strip().replace('\n', ' -I' + np.get_include() + ' extender/extender.c ') + ' -fPIC -o extender/extend'
+# flags = subprocess.run(['python3-config', '--cflags', '--ldflags'], stdout=subprocess.PIPE).stdout.decode()
+# flags = flags.strip().replace('\n', ' -I' + np.get_include() + ' extender/extender.c ') + ' -fPIC -o extender/extend'
 # print(flags)
-p  =subprocess.run(['gcc ' + flags ], shell=True)
+# p  =subprocess.run(['gcc ' + flags ], shell=True)
 
 setup(
     name = "contig-extender",
     version="0.0.1",
     ext_modules = ext, 
     include_dirs = [np.get_include()],
+    scripts=['extender/extender_wrapper.py'],
     install_requires = [
         'numpy',
-        'cython'
+        'cython',
+        'psutil'
     ]
 )
 # print(p.args)

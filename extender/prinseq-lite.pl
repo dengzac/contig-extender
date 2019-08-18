@@ -602,7 +602,7 @@ if(exists $params{fasta} && exists $params{fastq}) {
         #check for file format
         my $format = &checkFileFormat($file1);
         unless($format eq 'fastq') {
-            &printError('input file for -fastq is in '.uc($format).' format not in FASTQ format');
+            &printError('input file for -fastq is in '.uc($file1).' format not in FASTQ format');
         }
     } else {
         &printError("could not find input file \"".$params{fastq}."\"");

@@ -15,7 +15,7 @@ import psutil
 import sys
 from pathlib import Path
 import multiprocessing
-import pyximport
+# import pyximport
 import cython
 import array
 cimport numpy as np
@@ -42,6 +42,8 @@ cdef int NUM_THREADS = multiprocessing.cpu_count()
 cdef int COMPLEX_THRESHOLD = 15
 cdef int maxlength
 dirpath = ''
+stack = []
+maxlength = 0
 def replace_string(string, replace_letter, startPos, endPos):
     return (
         string[0:startPos]
@@ -57,6 +59,7 @@ cdef int c_max(int a, int b, int c):
     if a==best: return a
     if b==best: return b
     if c==best: return c
+
 def iterate(
     contig,
     inputReads,
@@ -67,13 +70,19 @@ def iterate(
     allow_alt=True,
     used_reads=set(),
     num_branches=1,
-    analyze_mode = False
+    analyze_mode = False,
+    args = []
 ):
 
     cdef int idx
-
+    global dirpath
+    global stack
+    global maxlength
+    # print(contig)
+    # print(COMPLEX_THRESHOLD)
     with open(contig) as reference:
         referenceData = reference.readlines()
+        # print(referenceData)
         referenceData = [x.strip() for x in referenceData]
         referenceData[1] = referenceData[1].strip("N")
 
@@ -136,10 +145,12 @@ def iterate(
             "--no-unal",
         ],
         stdout=subprocess.PIPE,
-        input=readData.encode(),
-        stderr=subprocess.DEVNULL,
+        input=inputReads.encode()
+        , stderr=subprocess.PIPE
     )
-
+    # print(inputReads)
+    # print(result.args)
+    # print(result.stderr.decode())
     if not quiet:
         print("Building consensus")
     frequencies = np.ones((len(extendedReference), 4), dtype=np.int64)
@@ -157,6 +168,7 @@ def iterate(
     altconsensus = ""
     alignments = result.stdout.decode().strip().split("\n")
     print(len(alignments), 'alignments')
+    # print (alignments)
     splitter = re.compile(r"\t+")
     if not quiet:
         print('filter')
@@ -412,10 +424,137 @@ def prepare_directory(name):
         pass
     os.makedirs(name)
 
-stack = []
 import cProfile
-if __name__ == "__main__":
+def _main(args):
+    global dirpath
+    global stack
+    global maxlength
+    global MIN_SCORE
+    global MIN_SCORE2
+    global MIN_OVERLAP
+    global BRANCH_LIMIT 
+    global STOP_LENGTH
+    global NUM_THREADS 
+    global COMPLEX_THRESHOLD
+    print(args)
+    MIN_OVERLAP = args.min_overlap_length
+    #MIN_SCORE = args.extend_tolerance*#args.min_extend_score
+    MIN_SCORE2 = args.min_branch_score
+    BRANCH_LIMIT = args.branch_limit
+    STOP_LENGTH = args.stop_length
+    NUM_THRADS = args.threads
+    COMPLEX_THRESHOLD = args.complex_threshold
 
+    output_dir = "output"
+    if args.out is not None:
+        output_dir = args.out
+    output_dir = Path(args.reads).stem + "_" + Path(args.reference).stem
+    # print(output_dir)
+    if not shutil.which("bowtie2"):
+        print("Error: bowtie2 not found. Add the executable location to PATH")
+        sys.exit()
+    dirpath =  tempfile.mkdtemp(dir='')
+    print("Temp dir", dirpath)
+    try:
+        shutil.rmtree("backup")
+    except:
+        pass
+
+    try:
+        shutil.copytree(output_dir, "backup")
+    except:
+        pass
+
+    try:
+        shutil.rmtree(output_dir)
+    except:
+        pass
+    os.makedirs(output_dir)
+
+
+
+    maxlength = 0
+    _, filtered_reads = tempfile.mkstemp()
+    print(args.reads)
+    print(__file__)
+    print(os.getcwd())
+    if COMPLEX_THRESHOLD != -1:
+        try:
+            p_path = os.path.join(sys._MEIPASS, 'prinseq-lite.pl')
+            res = subprocess.run([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'], cwd=os.getcwd()).args
+            print([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'])
+            filtered_reads = filtered_reads + '.fastq'
+
+            args.reads = filtered_reads
+        except:
+            print("prinseq-lite.pl not found, not filtering")
+    with open(args.reads) as reads:
+        lines = []
+        for line in reads:
+            lines.append(line.rstrip())
+            if len(lines) == 4:
+                maxlength = max(maxlength, len(lines[1]))
+                lines = []
+        reads.seek(0)
+        readData = reads.read()
+        # print(readData)
+        # print(reads)
+    MIN_SCORE = int(pow(10, -args.extend_tolerance) * maxlength * maxlength * args.coverage)
+    print("Using extend threshold ", MIN_SCORE)
+    matched_reads = set()
+    #iterate(args.reference, args.reads, output_dir + "/0.fa")
+    shutil.copyfile(args.reference, output_dir + "/0.fa")
+    os.makedirs(output_dir + "/contigs")
+    prev_len = 0
+
+    stack.append((output_dir + "/0", args.reads, "orig", 1))
+    while len(stack) > 0:
+        top = stack.pop()
+        if top[2] != "":
+            os.makedirs(output_dir + "/" + top[2])
+        inFile = top[0] + ".fa"
+        prev_len = 0
+        for i in range(5000):
+            start = time.perf_counter()
+            print(
+                "Read "
+                + inFile
+                + " output "
+                + output_dir + "/"
+                + top[2]
+                + "/"
+                + str(i + 1)
+                + ".fa"
+            )
+            res = iterate(
+                inFile,
+                readData,
+                output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa",
+                curPath=top[2],
+                allow_alt=(i != 0),
+                used_reads=matched_reads,
+                num_branches=top[3],
+                args=args
+            )
+            inFile = output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa"
+            print(i + 1, (time.perf_counter() - start), res)
+            if prev_len == res or res == -1 or res > 20000:
+                if res > 20000:
+                    print("Length limit exceeded")
+                analyze = regenerate_consensus(inFile, readData, output_dir + '/' +
+                                top[2] + '/consensus_temp.fa')
+                print("No progress, finished")
+                shutil.copyfile(inFile, output_dir + '/' +
+                                top[2] + '/consensus.fa')
+                shutil.copyfile(inFile, output_dir + '/contigs' + '/' + top[2].replace('/', '') + '_coverage_' + str(float(analyze)/float(res)) + '.fa')
+                break
+            prev_len = res
+
+        # shutil.rmtree(dirpath)
+    shutil.rmtree(dirpath)
+if __name__ == "__main__":
+    run_script(sys.argv[1:])
+def run_script(argv):
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -480,112 +619,5 @@ if __name__ == "__main__":
         default=COMPLEX_THRESHOLD,
         type=int
     )
-    args = parser.parse_args()
-
-    MIN_OVERLAP = args.min_overlap_length
-    #MIN_SCORE = args.extend_tolerance*#args.min_extend_score
-    MIN_SCORE2 = args.min_branch_score
-    BRANCH_LIMIT = args.branch_limit
-    STOP_LENGTH = args.stop_length
-    NUM_THRADS = args.threads
-    COMPLEX_THRESHOLD = args.complex_threshold
-
-    output_dir = "output"
-    if args.out is not None:
-        output_dir = args.out
-    output_dir = Path(args.reads).stem + "_" + Path(args.reference).stem
-    print(output_dir)
-    if not shutil.which("bowtie2"):
-        print("Error: bowtie2 not found. Add the executable location to PATH")
-        sys.exit()
-    dirpath =  tempfile.mkdtemp(dir='')
-    print("Temp dir", dirpath)
-    try:
-        shutil.rmtree("backup")
-    except:
-        pass
-
-    try:
-        shutil.copytree(output_dir, "backup")
-    except:
-        pass
-
-    try:
-        shutil.rmtree(output_dir)
-    except:
-        pass
-    os.makedirs(output_dir)
-
-
-
-    maxlength = 0
-    _, filtered_reads = tempfile.mkstemp()
-
-    if COMPLEX_THRESHOLD != -1:
-        subprocess.run(['./prinseq-lite.pl', '-fastq', args.reads, '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null']).args
-        filtered_reads = filtered_reads + '.fastq'
-
-        args.reads = filtered_reads
-    with open(args.reads) as reads:
-        lines = []
-        for line in reads:
-            lines.append(line.rstrip())
-            if len(lines) == 4:
-                maxlength = max(maxlength, len(lines[1]))
-                lines = []
-        reads.seek(0)
-        readData = reads.read()
-        # print(readData)
-        # print(reads)
-    MIN_SCORE = int(pow(10, -args.extend_tolerance) * maxlength * maxlength * args.coverage)
-    print("Using extend threshold ", MIN_SCORE)
-    matched_reads = set()
-    #iterate(args.reference, args.reads, output_dir + "/0.fa")
-    shutil.copyfile(args.reference, output_dir + "/0.fa")
-    os.makedirs(output_dir + "/contigs")
-    prev_len = 0
-    stack = []
-    stack.append((output_dir + "/0", args.reads, "orig", 1))
-    while len(stack) > 0:
-        top = stack.pop()
-        if top[2] != "":
-            os.makedirs(output_dir + "/" + top[2])
-        inFile = top[0] + ".fa"
-        prev_len = 0
-        for i in range(5000):
-            start = time.perf_counter()
-            print(
-                "Read "
-                + inFile
-                + " output "
-                + output_dir + "/"
-                + top[2]
-                + "/"
-                + str(i + 1)
-                + ".fa"
-            )
-            res = iterate(
-                inFile,
-                args.reads,
-                output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa",
-                curPath=top[2],
-                allow_alt=(i != 0),
-                used_reads=matched_reads,
-                num_branches=top[3],
-            )
-            inFile = output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa"
-            print(i + 1, (time.perf_counter() - start), res)
-            if prev_len == res or res == -1 or res > 10000:
-                if res > 10000:
-                    print("Length limit exceeded")
-                analyze = regenerate_consensus(inFile, args.reads, output_dir + '/' +
-                                top[2] + '/consensus_temp.fa')
-                print("No progress, finished")
-                shutil.copyfile(inFile, output_dir + '/' +
-                                top[2] + '/consensus.fa')
-                shutil.copyfile(inFile, output_dir + '/contigs' + '/' + top[2].replace('/', '') + '_coverage_' + str(float(analyze)/float(res)) + '.fa')
-                break
-            prev_len = res
-
-        # shutil.rmtree(dirpath)
-    shutil.rmtree(dirpath)
+    args = parser.parse_args(argv)
+    _main(args)
