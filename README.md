@@ -4,10 +4,17 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 
 ![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
+###Runtime:
+* Bowtie2
+* Perl (optional)
+
+###Development: 
 * Python 3.2+ (with development headers)
-* Cython
 * numpy
+* BioPython
 * setuptools
+* pyinstaller
+* Cython
 * gcc
 
 ## Building
