@@ -20,6 +20,7 @@ import cython
 import array
 cimport numpy as np
 import itertools
+from Bio import SeqIO
 from libc.stdlib cimport malloc, free
 #pyximport.install()
 cdef int get_char_pos(char c):
@@ -81,9 +82,11 @@ def iterate(
     # print(contig)
     # print(COMPLEX_THRESHOLD)
     with open(contig) as reference:
-        referenceData = reference.readlines()
+        data = list(SeqIO.parse(reference, 'fasta'))
+        referenceData = ['>' + data[0].id, str(data[0].seq)]
+        # referenceData = reference.readlines()
         # print(referenceData)
-        referenceData = [x.strip() for x in referenceData]
+        # referenceData = [x.strip() for x in referenceData]
         referenceData[1] = referenceData[1].strip("N")
 
     extendedReference = (
@@ -98,6 +101,8 @@ def iterate(
             len(extendedReference) - 2 - 2 * maxlength - 1*maxlength,
         )
     extendedReferenceFile = dirpath + "/extendedRef.fa"
+    # print(extendedReferenceFile)
+    # print(extendedReference)
     with open(extendedReferenceFile, "w") as out:
         out.writelines([referenceData[0] + "\n", extendedReference + "\n"])
 
@@ -107,7 +112,7 @@ def iterate(
     if not quiet:
         print("Building index")
     subprocess.run(
-        ["bowtie2-build", extendedReferenceFile, dirpath + "/ecoli"],
+        ["bowtie2-build", extendedReferenceFile, dirpath + "/ref"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -121,7 +126,7 @@ def iterate(
         [
             "bowtie2",
             "-x",
-            dirpath + "/ecoli",
+            dirpath + "/ref",
             "-U",
             "-",
             "-L",
@@ -166,8 +171,9 @@ def iterate(
 
     mainconsensus = ""
     altconsensus = ""
+    # print(alignments)
     alignments = result.stdout.decode().strip().split("\n")
-    print(len(alignments), 'alignments')
+    # print(len(alignments), 'alignments')
     # print (alignments)
     splitter = re.compile(r"\t+")
     if not quiet:
@@ -361,8 +367,8 @@ def iterate(
 
     altconsensus = "".join(altconsensus).strip("AN")
     mainconsensus = "".join(mainconsensus).strip("AN")
-    if altconsensus != mainconsensus:  # branch and allow_alt:
-        # print("Alternate detected ")  # + altconsensus)
+    if len(mainconsensus) == 5307: #altconsensus != mainconsensus:  # branch and allow_alt:
+        print("Create branch ")  # + altconsensus)
         if num_branches == BRANCH_LIMIT:
             # print("Reached limit, skipping")
             pass
@@ -425,6 +431,7 @@ def prepare_directory(name):
     os.makedirs(name)
 
 import cProfile
+import os.path
 def _main(args):
     global dirpath
     global stack
@@ -436,7 +443,7 @@ def _main(args):
     global STOP_LENGTH
     global NUM_THREADS 
     global COMPLEX_THRESHOLD
-    print(args)
+    # print(args)
     MIN_OVERLAP = args.min_overlap_length
     #MIN_SCORE = args.extend_tolerance*#args.min_extend_score
     MIN_SCORE2 = args.min_branch_score
@@ -445,16 +452,15 @@ def _main(args):
     NUM_THRADS = args.threads
     COMPLEX_THRESHOLD = args.complex_threshold
 
-    output_dir = "output"
-    if args.out is not None:
-        output_dir = args.out
     output_dir = Path(args.reads).stem + "_" + Path(args.reference).stem
+    if args.out is not None:
+        output_dir = os.path.join(args.out, output_dir)
     # print(output_dir)
     if not shutil.which("bowtie2"):
         print("Error: bowtie2 not found. Add the executable location to PATH")
         sys.exit()
     dirpath =  tempfile.mkdtemp(dir='')
-    print("Temp dir", dirpath)
+    print("Temp dir: " + dirpath)
     try:
         shutil.rmtree("backup")
     except:
@@ -475,9 +481,9 @@ def _main(args):
 
     maxlength = 0
     _, filtered_reads = tempfile.mkstemp()
-    print(args.reads)
-    print(__file__)
-    print(os.getcwd())
+    # print(args.reads)
+    # print(__file__)
+    # print(os.getcwd())
     if COMPLEX_THRESHOLD != -1:
         try:
             p_path = os.path.join(sys._MEIPASS, 'prinseq-lite.pl')
@@ -500,9 +506,17 @@ def _main(args):
         # print(readData)
         # print(reads)
     MIN_SCORE = int(pow(10, -args.extend_tolerance) * maxlength * maxlength * args.coverage)
-    print("Using extend threshold ", MIN_SCORE)
+    print("Using extend threshold " + str( MIN_SCORE))
     matched_reads = set()
     #iterate(args.reference, args.reads, output_dir + "/0.fa")
+
+    fasta = list(SeqIO.parse(open(args.reference), 'fasta'))
+    # print(args.reference)
+    # with open(args.reference) as tt:
+    #     print(tt.readlines())
+    if len(fasta) != 1:
+        print("Error: this script accepts only one contig per FASTA input")
+        sys.exit()
     shutil.copyfile(args.reference, output_dir + "/0.fa")
     os.makedirs(output_dir + "/contigs")
     prev_len = 0
@@ -514,18 +528,19 @@ def _main(args):
             os.makedirs(output_dir + "/" + top[2])
         inFile = top[0] + ".fa"
         prev_len = 0
+        print("Extending " + inFile)
         for i in range(5000):
             start = time.perf_counter()
-            print(
-                "Read "
-                + inFile
-                + " output "
-                + output_dir + "/"
-                + top[2]
-                + "/"
-                + str(i + 1)
-                + ".fa"
-            )
+            # print(
+            #     "Read "
+            #     + inFile
+            #     + " output "
+            #     + output_dir + "/"
+            #     + top[2]
+            #     + "/"
+            #     + str(i + 1)
+            #     + ".fa"
+            # )
             res = iterate(
                 inFile,
                 readData,
@@ -537,87 +552,28 @@ def _main(args):
                 args=args
             )
             inFile = output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa"
-            print(i + 1, (time.perf_counter() - start), res)
+            if res!=-1: print("Iteration " + str(i + 1) + " in " + "{0:.4f}".format(time.perf_counter() - start) + "sec, length " + str(res))
             if prev_len == res or res == -1 or res > 20000:
                 if res > 20000:
                     print("Length limit exceeded")
                 analyze = regenerate_consensus(inFile, readData, output_dir + '/' +
                                 top[2] + '/consensus_temp.fa')
-                print("No progress, finished")
+                # print("No progress, finished")
                 shutil.copyfile(inFile, output_dir + '/' +
                                 top[2] + '/consensus.fa')
-                shutil.copyfile(inFile, output_dir + '/contigs' + '/' + top[2].replace('/', '') + '_coverage_' + str(float(analyze)/float(res)) + '.fa')
+                # print(top[2])
+                shutil.copyfile(inFile, output_dir + '/contigs' + '/' + top[2].replace('/', '-') + '_coverage_' + str(float(analyze)/float(max(max(1, res), prev_len))) + '.fa')
                 break
             prev_len = res
 
         # shutil.rmtree(dirpath)
     shutil.rmtree(dirpath)
+    return output_dir
 if __name__ == "__main__":
     run_script(sys.argv[1:])
-def run_script(argv):
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument("reference", help="fasta file with contig to extend")
-    parser.add_argument("reads", help="fastq file with reads to extend with")
-
-    parser.add_argument("out", nargs="?", help="output directory")
-    parser.add_argument(
-        "--min-overlap-length",
-        help="minimum length of overlap between candidate read and contig",
-        nargs="?",
-        default=MIN_OVERLAP,
-        type=int,
-    )
-    parser.add_argument(
-        "--extend-tolerance",
-        help="lower numbers require more reads to extend",
-        nargs="?",
-        default=2.5,
-        type=float,
-    )
-
-    parser.add_argument(
-        "--coverage",
-        help="estimate of coverage",
-        nargs="?",
-        default=10,
-        type=float,
-    )
-    parser.add_argument(
-        "--min-branch-score",
-        help="minimum score required to create alternative contig",
-        nargs="?",
-        default=MIN_SCORE2,
-        type=int,
-    )
-    parser.add_argument(
-        "--branch-limit",
-        help="number of alternative contigs to output",
-        nargs="?",
-        default=BRANCH_LIMIT,
-        type=int,
-    )
-    parser.add_argument(
-        "--stop-length",
-        help="terminate extension if substring of this size is repeated within contig",
-        nargs="?",
-        default=STOP_LENGTH,
-        type=int,
-    )
-    parser.add_argument(
-        "--threads",
-        help="number of threads to use in computing alignments",
-        nargs="?",
-        default=psutil.cpu_count(),
-    )
-    parser.add_argument(
-        "--complex-threshold",
-        help="[0-100] higher values indicate less complexity. -1 to disable",
-        nargs="?",
-        default=COMPLEX_THRESHOLD,
-        type=int
-    )
-    args = parser.parse_args(argv)
-    _main(args)
+    if not cython.compiled:
+        print("Warning: not running in Cython. Processing time will be affected.")
+def run_script(args):
+    
+    
+    return _main(args)

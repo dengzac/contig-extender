@@ -14,15 +14,14 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 ```
 git clone https://github.com/dengzac/contig-extender.git
 cd contig-extender
-python setup.py build
+./build.sh
 ```
-Executable will be named extender/extend
+Executable is ```dist/extender_wrapper```
 
-A Python extension is also built but no Python interface is available currently so it can be ignored.
 
 ## Usage
 ```
-usage: extend [-h] [--min-overlap-length [MIN_OVERLAP_LENGTH]]
+usage: extender_wrapper [-h] [--min-overlap-length [MIN_OVERLAP_LENGTH]]
               [--extend-tolerance [EXTEND_TOLERANCE]] [--coverage [COVERAGE]]
               [--min-branch-score [MIN_BRANCH_SCORE]]
               [--branch-limit [BRANCH_LIMIT]] [--stop-length [STOP_LENGTH]]
@@ -30,7 +29,7 @@ usage: extend [-h] [--min-overlap-length [MIN_OVERLAP_LENGTH]]
               reference reads [out]
 
 positional arguments:
-  reference             fasta file with contig to extend
+  reference             fasta file with contigs to extend
   reads                 fastq file with reads to extend with
   out                   output directory (default: None)
 
@@ -63,8 +62,8 @@ optional arguments:
 ```
 
 ## Examples
-The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command, specifying the correct location of the ```extend``` program:
+The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
 ```
-extend --complex-threshold -1 --coverage 50 BKV_seed_1000_867.fa BKV_250_50_0.01_0_.fastq
+./dist/extender_wrapper --complex-threshold -1 --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
 ```
-The output contig(s) will be found in the ```BKV_250_50_0.01_0__BKV_seed_1000_867/contigs``` folder as FASTA files. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
+The output contig(s) for each input will be found in the ```output/contigs.fasta```, sorted by length and in the order they appeared in the input. For example, the output contigs for the input sequence ```>reference``` will be named ```>reference_1 reference```, ```>reference_2 reference```, etc. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.

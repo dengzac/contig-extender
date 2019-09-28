@@ -1,11 +1,12 @@
 #!/usr/bin/python
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
 from Cython.Compiler import Options
 import subprocess
 Options.embed = 'main'
 from Cython.Build import cythonize
+from Cython.Distutils import build_ext
 import numpy as np
-ext = cythonize('extender/extender.pyx')
+
 
 # flags = subprocess.run(['python3-config', '--cflags', '--ldflags'], stdout=subprocess.PIPE).stdout.decode()
 # flags = flags.strip().replace('\n', ' -I' + np.get_include() + ' extender/extender.c ') + ' -fPIC -o extender/extend'
@@ -15,8 +16,9 @@ ext = cythonize('extender/extender.pyx')
 setup(
     name = "contig-extender",
     version="0.0.1",
-    ext_modules = ext, 
+    ext_modules = [Extension("extender", ["extender/extender.pyx"])], 
     include_dirs = [np.get_include()],
+    cmdclass={'build_ext': build_ext},
     scripts=['extender/extender_wrapper.py'],
     install_requires = [
         'numpy',
