@@ -27,6 +27,9 @@ Executable is ```dist/extender_wrapper```
 
 
 ## Usage
+**The software currently does not support compressed files or paired-end data. **
+For best results, preprocess fastq by removing adaptors before attemping extension
+Filtering based on complexity is an available option (uses DUST method from PRINSEQ)
 ```
 usage: extender_wrapper [-h] [--min-overlap-length [MIN_OVERLAP_LENGTH]]
               [--extend-tolerance [EXTEND_TOLERANCE]] [--coverage [COVERAGE]]

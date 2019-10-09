@@ -490,6 +490,9 @@ def _main(args):
             res = subprocess.run([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'], cwd=os.getcwd()).args
             print([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'])
             filtered_reads = filtered_reads + '.fastq'
+            if not os.path.isfile(filtered_reads):
+                print("No prinseq output found. Make sure file EOL sequence is correct")
+                raise RuntimeError("No prinseq output found")
 
             args.reads = filtered_reads
         except:

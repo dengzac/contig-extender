@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 
-parser.add_argument("reference", help="fasta file with contig to extend")
+parser.add_argument("reference", help="fasta file with contigs to extend")
 parser.add_argument("reads", help="fastq file with reads to extend with")
 
 parser.add_argument("out", nargs="?", help="output directory", default='output')
@@ -83,9 +83,9 @@ import base64
 import copy
 import os
 import os.path
+all_output = []
 with open(args.reference) as multi_contigs:
     sequences = SeqIO.parse(multi_contigs, 'fasta')
-    all_output = []
     for seq in sequences:
         fname = base64.urlsafe_b64encode(str.encode(seq.id)).decode()
         with open(fname, 'w') as tempfile:
@@ -103,5 +103,8 @@ with open(args.reference) as multi_contigs:
             num += 1
         branches = sorted(branches, key=lambda x: len(str(x.seq)), reverse=True)
         all_output.extend(branches)
-SeqIO.write(all_output, os.path.join(args.out, "contigs.fasta"), 'fasta')
-print("Output is located in " + os.path.join(args.out, "contigs.fasta"))
+if len(all_output) == 0:
+    print("Empty input")
+else:
+    SeqIO.write(all_output, os.path.join(args.out, "contigs.fasta"), 'fasta')
+    print("Output is located in " + os.path.join(args.out, "contigs.fasta"))
