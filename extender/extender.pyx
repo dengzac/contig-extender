@@ -556,8 +556,8 @@ def _main(args):
             )
             inFile = output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa"
             if res!=-1: print("Iteration " + str(i + 1) + " in " + "{0:.4f}".format(time.perf_counter() - start) + "sec, length " + str(res))
-            if prev_len == res or res == -1 or res > 20000:
-                if res > 20000:
+            if prev_len == res or res == -1 or res > 100000:
+                if res > 100000:
                     print("Length limit exceeded")
                 analyze = regenerate_consensus(inFile, readData, output_dir + '/' +
                                 top[2] + '/consensus_temp.fa')
