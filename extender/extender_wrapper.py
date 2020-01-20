@@ -1,3 +1,9 @@
+"""Conting Extender Script
+
+This script allows the ContigExtender software to be run from the command line.
+Run `extender_wrapper --help` to see full list of options
+"""
+
 import sys
 
 import argparse

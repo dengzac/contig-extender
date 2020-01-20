@@ -16,7 +16,7 @@ import numpy as np
 setup(
     name = "contig-extender",
     version="0.0.1",
-    ext_modules = [Extension("extender", ["extender/extender.pyx"])], 
+    ext_modules = [Extension("extender", ["extender/extender.pyx"])],
     include_dirs = [np.get_include()],
     cmdclass={'build_ext': build_ext},
     scripts=['extender/extender_wrapper.py'],
