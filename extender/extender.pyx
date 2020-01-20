@@ -2,6 +2,9 @@
 # cython: linetrace=True
 # cython: binding=True
 # distutils: define_macros=CYTHON_TRACE_NOGIL=1
+import gzip
+from mimetypes import guess_type
+from functools import partial
 import time
 import argparse
 import tempfile
@@ -61,6 +64,10 @@ cdef int c_max(int a, int b, int c):
     if b==best: return b
     if c==best: return c
 
+def open_file(fname):
+    encoding = guess_type(fname)[1]
+    return gzip.open(fname, "rt") if encoding == 'gzip' else open(fname)
+
 def iterate(
     contig,
     inputReads,
@@ -81,7 +88,7 @@ def iterate(
     global maxlength
     # print(contig)
     # print(COMPLEX_THRESHOLD)
-    with open(contig) as reference:
+    with open_file(contig) as reference:
         data = list(SeqIO.parse(reference, 'fasta'))
         referenceData = ['>' + data[0].id, str(data[0].seq)]
         # referenceData = reference.readlines()
@@ -430,7 +437,6 @@ def prepare_directory(name):
         pass
     os.makedirs(name)
 
-import cProfile
 import os.path
 def _main(args):
     global dirpath
@@ -487,7 +493,9 @@ def _main(args):
     if COMPLEX_THRESHOLD != -1:
         try:
             p_path = os.path.join(sys._MEIPASS, 'prinseq-lite.pl')
-            res = subprocess.run([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'], cwd=os.getcwd()).args
+            filter_input = open_file(args.reads).read().encode()
+
+            res = subprocess.run([p_path, '-fastq', 'stdin', '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'], cwd=os.getcwd(), input=filter_input).args
             print([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'])
             filtered_reads = filtered_reads + '.fastq'
             if not os.path.isfile(filtered_reads):
@@ -497,7 +505,7 @@ def _main(args):
             args.reads = filtered_reads
         except:
             print("prinseq-lite.pl not found, not filtering")
-    with open(args.reads) as reads:
+    with open_file(args.reads) as reads:
         lines = []
         for line in reads:
             lines.append(line.rstrip())
@@ -513,7 +521,7 @@ def _main(args):
     matched_reads = set()
     #iterate(args.reference, args.reads, output_dir + "/0.fa")
 
-    fasta = list(SeqIO.parse(open(args.reference), 'fasta'))
+    fasta = list(SeqIO.parse(open_file(args.reference), 'fasta'))
     # print(args.reference)
     # with open(args.reference) as tt:
     #     print(tt.readlines())
