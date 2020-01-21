@@ -14,6 +14,7 @@ import os.path
 from Bio import SeqIO
 import psutil
 import extender
+import tempfile 
 
 MIN_SCORE = 10000
 MIN_SCORE2 = 5
@@ -27,7 +28,9 @@ PARSER = argparse.ArgumentParser(
 )
 
 PARSER.add_argument("reference", help="fasta file with contigs to extend")
-PARSER.add_argument("reads", help="fastq file with reads to extend with")
+PARSER.add_argument("reads", nargs="?", help="fastq file with unpaired reads to extend with")
+PARSER.add_argument("--m1", nargs="?", help="fastq file with #1 mates")
+PARSER.add_argument("--m2", nargs="?", help="fastq file with #2 mates")
 
 PARSER.add_argument("out", nargs="?", help="output directory", default='output')
 PARSER.add_argument(
@@ -88,6 +91,32 @@ PARSER.add_argument(
 )
 ARGS = PARSER.parse_args(sys.argv[1:])
 
+if not ARGS.reads:
+    ARGS.paired = True
+    combined_reads, filename = tempfile.mkstemp()
+    combined_reads = os.fdopen(combined_reads, 'w+')
+    print(combined_reads)
+    print(filename)
+    try:
+        m1 = extender.open_file(ARGS.m1)
+        m2 = extender.open_file(ARGS.m2)
+        l1 = iter([x for x in m1])
+        l2 = iter([x for x in m2])
+        l1 = [[c, next(l1, ''), next(l1, ''), next(l1, '')] for c in l1]
+        l2 = [[c, next(l2, ''), next(l2, ''), next(l2, '')] for c in l2]
+        if len(l1)!=len(l2):
+            raise RuntimeError("Different numbers of #1 and #2 mates provided")
+
+        for a, b in zip(l1, l2):
+            b[0] = a[0].strip() + "/2\n"
+            a[0] = a[0].strip() + "/1\n"
+            combined_reads.write(''.join(a))
+            combined_reads.write(''.join(b))
+        ARGS.reads = filename
+    except IOError:
+        raise RuntimeError("No read files specified")
+else:
+    ARGS.paired = False
 ALL_OUTPUT = []
 with extender.open_file(ARGS.reference) as multi_contigs:
     SEQUENCES = SeqIO.parse(multi_contigs, 'fasta')
