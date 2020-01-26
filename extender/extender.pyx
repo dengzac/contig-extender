@@ -96,6 +96,7 @@ cdef int STOP_LENGTH = 250
 cdef int NUM_THREADS = multiprocessing.cpu_count()
 cdef int COMPLEX_THRESHOLD = 15
 cdef int maxlength
+paired = False
 dirpath = ''
 stack = []
 maxlength = 0
@@ -131,7 +132,8 @@ def iterate(
         "A" + ("N" * (maxlength + 1)) + referenceData[1] + ("N" * (maxlength + 1)) + "A"
     )
     origReference = extendedReference
-    if exclude:
+    # Keep only edges of reference sequence in unpaired mode
+    if exclude and not PAIRED:
         extendedReference = replace_string(
             extendedReference,
             "N",
@@ -163,7 +165,7 @@ def iterate(
             "bowtie2",
             "-x",
             dirpath + "/ref",
-            "-U",
+            "--interleaved" if PAIRED else "-U",
             "-",
             "-L",
             "20",
@@ -206,12 +208,13 @@ def iterate(
     alignments = filter(lambda a: a[0] != "@" and a[3] != "1", alignments)
     if not quiet:
         print('split')
-    alignment_fields = np.array([np.array([x for x in re.split(splitter, o, maxsplit=10)]) for o in alignments], dtype=np.object_)
+    alignment_fields = [[x for x in re.split(splitter, o)] for o in alignments]
+
     if not quiet:
         print('pos')
-    cdef int[:] alignPos = alignment_fields[:, 3].astype(np.int32)-1
 
-    cdef np.ndarray[dtype=object, ndim=2] align_arr = alignment_fields
+    alignPosList = [int(a[3])-1 for a in alignment_fields]
+    cdef long[:] alignPos = np.array(alignPosList)
     cdef int pos, quality, quality2
     cdef char n_char = 'N'
     cdef int c_pos, char_pos
@@ -228,7 +231,15 @@ def iterate(
     with cython.boundscheck(False):
         for ii in range(len(alignment_fields)):
             fields = alignment_fields[ii]
+
+            # Ignore discordant pairs
+            if "YT:Z:DP" in fields:
+                continue
+            elif "YT:Z:CP" in fields:
+                pass
+
             rLen = len(fields[9])
+
             total_coverage += rLen
 
             pos = alignPos[ii]
@@ -242,10 +253,12 @@ def iterate(
                 quality1 = rLen - (maxlength + 2) + pos
             elif pos + rLen > maxlength + 2 + refLength:
                 quality2 = maxlength + 2 + refLength - pos
-            else:
-                for idx in range(rLen):
-                    if r[idx] == ext[idx + pos]:
-                        quality2 += 1
+            # Completely within reference
+
+            # else:
+            #     for idx in range(rLen):
+            #         if r[idx] == ext[idx + pos]:
+            #             quality2 += 1
             quality = c_max(quality1, quality2, MIN_OVERLAP)
             if quality == MIN_OVERLAP:
                 quality = 0
@@ -405,6 +418,7 @@ def _main(args):
     global STOP_LENGTH
     global NUM_THREADS
     global COMPLEX_THRESHOLD
+    global PAIRED
 
     MIN_OVERLAP = args.min_overlap_length
     MIN_SCORE2 = args.min_branch_score
@@ -412,7 +426,10 @@ def _main(args):
     STOP_LENGTH = args.stop_length
     NUM_THRADS = args.threads
     COMPLEX_THRESHOLD = args.complex_threshold
+    PAIRED = args.paired
 
+    if PAIRED:
+        print("Running in paired mode")
     output_dir = Path(args.reads).stem + "_" + Path(args.reference).stem
     if args.out is not None:
         output_dir = os.path.join(args.out, output_dir)

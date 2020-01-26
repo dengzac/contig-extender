@@ -91,6 +91,7 @@ PARSER.add_argument(
 )
 ARGS = PARSER.parse_args(sys.argv[1:])
 
+# No unpaired reads specified, check for paired files
 if not ARGS.reads:
     ARGS.paired = True
     combined_reads, filename = tempfile.mkstemp()
