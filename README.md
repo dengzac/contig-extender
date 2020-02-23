@@ -6,7 +6,7 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 ## Dependencies
 ### Runtime:
 * Bowtie2 2.3.4+
-* Perl (optional)
+* Perl
 
 ### Development: 
 * Python 3.2+ (with development headers)

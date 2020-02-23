@@ -1,12 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import glob
 block_cipher = None
 
 
 a = Analysis(['extender/extender_wrapper.py'],
              pathex=[os.getcwd()],
              binaries=[],
-             datas=[('extender/prinseq-lite.pl', '.')],
+             datas=[('extender/prinseq-lite.pl', '.')] + [(a, '.') for a in glob.glob("bowtie-win/*")],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

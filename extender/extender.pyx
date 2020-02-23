@@ -103,9 +103,38 @@ dirpath = ''
 stack = []
 maxlength = 0
 
+def check_bowtie_ver(path):
+    version = subprocess.run(
+            [
+                path,
+                "--version"
+            ],
+            stdout=subprocess.PIPE
+        )
 
+    try:
+        version_string = version.stdout.decode().strip().split('\n')[0].split(' ')[2]
+    except:
+        pass
+    else:
+        if LooseVersion(version_string)<LooseVersion("2.3.4"):
+            raise RuntimeError("Current bowtie2 version " + version_string + " too old; must be >= 2.3.4")
+def get_bowtie_path():
+    installed_path = shutil.which("bowtie2")
+    if installed_path:
+        check_bowtie_ver(installed_path)
+        return installed_path
+    elif os.name == 'nt' and hasattr(sys, '_MEIPASS'):
+        p_path = os.path.join(sys._MEIPASS, 'bowtie2.bat')
+        check_bowtie_ver(p_path)
+        return p_path
+    else:
+        raise RuntimeError("bowtie2 not found. Add the executable location to PATH")
 
-
+def get_bowtie_build_path():
+    # Replace last occurence of "bowtie2" with "bowtie2-build"
+    li = get_bowtie_path().rsplit("bowtie2", 1)
+    return "bowtie2-build".join(li)
 def iterate(
     contig,
     inputReads,
@@ -152,7 +181,7 @@ def iterate(
     if not quiet:
         print("Building index")
     subprocess.run(
-        [shutil.which("bowtie2-build"), extendedReferenceFile, dirpath + "/ref"],
+        [get_bowtie_build_path(), extendedReferenceFile, dirpath + "/ref"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -162,27 +191,10 @@ def iterate(
 
     bamOutput = dirpath + "/out2.sam"
     try: 
-        version = subprocess.run(
-            [
-                shutil.which("bowtie2"),
-                "--version"
-            ],
-            stdout=subprocess.PIPE
-        )
-
-        try:
-            version_string = version.stdout.decode().strip().split('\n')[0].split(' ')[2]
-        except:
-            pass
-        else:
-            if LooseVersion(version_string)<LooseVersion("2.3.4"):
-                raise RuntimeError("Current bowtie2 version " + version_string + " too old; must be >= 2.3.4")
-
-
 
         result = subprocess.run(
             [
-                shutil.which("bowtie2"),
+                get_bowtie_path(),
                 "-x",
                 dirpath + "/ref",
                 "--interleaved" if PAIRED else "-U",
@@ -450,15 +462,13 @@ def _main(args):
     COMPLEX_THRESHOLD = args.complex_threshold
     PAIRED = args.paired
 
+    print("Using bowtie2 at " + get_bowtie_path())
     if PAIRED:
         print("Running in paired mode")
     output_dir = Path(args.reads).stem + "_" + Path(args.reference).stem
     if args.out is not None:
         output_dir = os.path.join(args.out, output_dir)
 
-    if not shutil.which("bowtie2"):
-        print("Error: bowtie2 not found. Add the executable location to PATH")
-        sys.exit()
     dirpath = tempfile.mkdtemp(dir='')
     print("Temp dir: " + dirpath)
     try:
