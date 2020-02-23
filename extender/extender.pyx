@@ -11,6 +11,7 @@ import heapq
 import os.path
 import psutil
 import gzip
+from distutils.version import LooseVersion
 from mimetypes import guess_type
 import sys
 from pathlib import Path
@@ -161,6 +162,24 @@ def iterate(
 
     bamOutput = dirpath + "/out2.sam"
     try: 
+        version = subprocess.run(
+            [
+                shutil.which("bowtie2"),
+                "--version"
+            ],
+            stdout=subprocess.PIPE
+        )
+
+        try:
+            version_string = version.stdout.decode().strip().split('\n')[0].split(' ')[2]
+        except:
+            pass
+        else:
+            if LooseVersion(version_string)<LooseVersion("2.3.4"):
+                raise RuntimeError("Current bowtie2 version " + version_string + " too old; must be >= 2.3.4")
+
+
+
         result = subprocess.run(
             [
                 shutil.which("bowtie2"),
