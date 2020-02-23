@@ -22,33 +22,38 @@ MIN_OVERLAP = 15
 BRANCH_LIMIT = 1
 STOP_LENGTH = 250
 COMPLEX_THRESHOLD = 15
+INS_LENGTH = 500
 
-PARSER = argparse.ArgumentParser(
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        self.print_help(sys.stderr)
+        super().error(message)
+PARSER = ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 
 PARSER.add_argument("reference", help="fasta file with contigs to extend")
 PARSER.add_argument("reads", nargs="?",
-                    help="fastq file with unpaired reads to extend with")
-PARSER.add_argument("--m1", nargs="?", help="fastq file with #1 mates")
-PARSER.add_argument("--m2", nargs="?", help="fastq file with #2 mates")
+                    help="fastq file with unpaired reads to extend with; use the --m1 and --m2 options instead for paired reads")
+PARSER.add_argument("--m1", nargs="?", help="fastq file with #1 mates of paired data")
+PARSER.add_argument("--m2", nargs="?", help="fastq file with #2 mates of paried data")
 
 PARSER.add_argument("--out", nargs="?",
                     help="output directory", default='output')
 
 PARSER.add_argument("--enable-pair-constraint",
-                    dest='pair_constraint', action='store_true', default=False, help="Require paired-end alignments to satisfy orientation and insert size constraints")
+                    dest='pair_constraint', action='store_true', default=False, help="Require paired-end alignments to satisfy orientation and insert size constraints according to Bowtie2. Otherwise, paired data will be treated as two sets of unpaired reads.")
 
 PARSER.add_argument(
     "--min-overlap-length",
-    help="minimum length of overlap between candidate read and contig",
+    help="minimum length of overlap between candidate read and the existing contig",
     nargs="?",
     default=MIN_OVERLAP,
     type=int,
 )
 PARSER.add_argument(
     "--extend-tolerance",
-    help="lower numbers require more reads to extend",
+    help="This parameter, along with read length and coverage, is used to determine the required score to extend. Lower numbers require better quality alignments to extend",
     nargs="?",
     default=2.5,
     type=float,
@@ -56,43 +61,50 @@ PARSER.add_argument(
 
 PARSER.add_argument(
     "--coverage",
-    help="estimate of coverage",
+    help="estimate of sequencing coverage",
     nargs="?",
     default=10,
     type=float,
 )
 PARSER.add_argument(
     "--min-branch-score",
-    help="minimum score required to create alternative contig",
+    help="A new branch for an alternative contig will be created if it meets this threshold. Then, both the main and alternative branches will be processed recursively.",
     nargs="?",
     default=MIN_SCORE2,
     type=int,
 )
 PARSER.add_argument(
     "--branch-limit",
-    help="number of alternative contigs to output",
+    help="This limits the number of alternative contigs that are considered and output. Once the search tree has this many leaf nodes, no new branches will be created",
     nargs="?",
     default=BRANCH_LIMIT,
     type=int,
 )
 PARSER.add_argument(
     "--stop-length",
-    help="terminate extension if substring of this size is repeated within contig",
+    help="Terminate extension if any substring of this size is repeated within the contig. This prevents circular genomes from infinite extension.",
     nargs="?",
     default=STOP_LENGTH,
     type=int,
 )
 PARSER.add_argument(
     "--threads",
-    help="number of threads to use in computing alignments",
+    help="Number of threads to use in computing alignments",
     nargs="?",
     default=psutil.cpu_count(),
 )
 PARSER.add_argument(
     "--complex-threshold",
-    help="[0-100] higher values indicate less complexity. -1 to disable",
+    help="[0-100] This parameter is passed to PRINSEQ's DUST complexity filter, is run on the reads. Higher values indicate less complexity. -1 to disable",
     nargs="?",
     default=COMPLEX_THRESHOLD,
+    type=int
+)
+PARSER.add_argument(
+    "--maxins",
+    help="When using paired-end constraints, this is the maximum fragment length, passed directly to Bowtie2. This length includes both reads ond the gap between them. Refer to the Bowtie2 manual for more information",
+    nargs="?",
+    default=INS_LENGTH,
     type=int
 )
 ARGS = PARSER.parse_args(sys.argv[1:])
