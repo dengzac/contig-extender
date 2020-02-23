@@ -1,4 +1,5 @@
 import time
+import pathlib
 import argparse
 import tempfile
 import shutil
@@ -150,7 +151,7 @@ def iterate(
     if not quiet:
         print("Building index")
     subprocess.run(
-        ["bowtie2-build", extendedReferenceFile, dirpath + "/ref"],
+        [shutil.which("bowtie2-build"), extendedReferenceFile, dirpath + "/ref"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -159,43 +160,45 @@ def iterate(
         print("Finding matches")
 
     bamOutput = dirpath + "/out2.sam"
-
-    result = subprocess.run(
-        [
-            "bowtie2",
-            "-x",
-            dirpath + "/ref",
-            "--interleaved" if PAIRED else "-U",
-            "-",
-            "-L",
-            "20",
-            "--n-ceil",
-            "L,1000,0",
-            "--np",
-            "0",
-            "-p",
-            str(NUM_THREADS),
-            "-i",
-            "S,10,0",
-            "--dpad",
-            str(maxlength),
-            "--gbar",
-            "20",
-            "--rdg",
-            "100000,100000",
-            "--rfg",
-            "1000000,1000000",
-            "--no-unal",
-        ],
-        stdout=subprocess.PIPE,
-        input=inputReads.encode(),
-        stderr=subprocess.PIPE
-    )
-
+    try: 
+        result = subprocess.run(
+            [
+                shutil.which("bowtie2"),
+                "-x",
+                dirpath + "/ref",
+                "--interleaved" if PAIRED else "-U",
+                "-",
+                "-L",
+                "20",
+                "--n-ceil",
+                "L,1000,0",
+                "--np",
+                "0",
+                "-p",
+                str(NUM_THREADS),
+                "-i",
+                "S,10,0",
+                "--dpad",
+                str(maxlength),
+                "--gbar",
+                "20",
+                "--rdg",
+                "100000,100000",
+                "--rfg",
+                "1000000,1000000",
+                "--no-unal",
+            ],
+            stdout=subprocess.PIPE,
+            input=inputReads,
+            stderr=subprocess.PIPE
+        )
+    except Exception as e:
+        print(e)
+        raise e
     if not quiet:
         print("Building consensus")
-    frequencies = np.ones((len(extendedReference), 4), dtype=np.int64)
-    mult_frequencies = np.zeros((len(extendedReference), 4), dtype=np.int64)
+    frequencies = np.ones((len(extendedReference), 4), dtype=np.int_)
+    mult_frequencies = np.zeros((len(extendedReference), 4), dtype=np.int_)
     cdef long[:, :] freq_view = frequencies
     cdef long[:, :] mult_view = mult_frequencies
 
@@ -460,18 +463,22 @@ def _main(args):
 
     if COMPLEX_THRESHOLD != -1:
         try:
-            p_path = os.path.join(sys._MEIPASS, 'prinseq-lite.pl')
+            # Look for prinseq library in either pyinstaller package or script location
+            p_path = os.path.join(sys._MEIPASS if hasattr(sys, '_MEIPASS') else pathlib.Path().absolute(), 'prinseq-lite.pl')
+            if not os.path.isfile(p_path):
+                raise RuntimeError("Prinseq library not found")
             filter_input = open_file(args.reads).read().encode()
 
-            res = subprocess.run([p_path, '-fastq', 'stdin', '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'], cwd=os.getcwd(), input=filter_input).args
-            print([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'])
+            res = subprocess.run([shutil.which('perl'), p_path, '-fastq', 'stdin', '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'], cwd=os.getcwd(), input=filter_input).args
+            # print([p_path, '-fastq', os.path.abspath(args.reads), '-lc_method', 'dust', '-lc_threshold', str(COMPLEX_THRESHOLD), '-out_good', filtered_reads, '-out_bad', 'null'])
             filtered_reads = filtered_reads + '.fastq'
             if not os.path.isfile(filtered_reads):
                 print("No prinseq output found. Make sure file EOL sequence is correct")
                 raise RuntimeError("No prinseq output found")
 
             args.reads = filtered_reads
-        except:
+        except Exception as e:
+            print(e)
             print("prinseq-lite.pl not found, not filtering")
     with open_file(args.reads) as reads:
         lines = []
@@ -481,7 +488,7 @@ def _main(args):
                 maxlength = max(maxlength, len(lines[1]))
                 lines = []
         reads.seek(0)
-        readData = reads.read()
+        readData = reads.read().encode()
 
     MIN_SCORE = int(pow(10, -args.extend_tolerance) * maxlength * maxlength * args.coverage)
     print("Using extend threshold " + str(MIN_SCORE))

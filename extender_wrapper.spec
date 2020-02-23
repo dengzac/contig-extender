@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+import os
 block_cipher = None
 
 
 a = Analysis(['extender/extender_wrapper.py'],
-             pathex=['/mnt/c/Users/Zachary/Desktop/contig-package'],
+             pathex=[os.getcwd()],
              binaries=[],
              datas=[('extender/prinseq-lite.pl', '.')],
              hiddenimports=[],

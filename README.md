@@ -5,7 +5,7 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 ![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
 ## Dependencies
 ### Runtime:
-* Bowtie2
+* Bowtie2 2.3.4+
 * Perl (optional)
 
 ### Development: 
@@ -27,7 +27,6 @@ Executable is ```dist/extender_wrapper```
 
 
 ## Usage
-**The software currently does not support compressed files or paired-end data. **
 For best results, preprocess fastq by removing adaptors before attemping extension
 Filtering based on complexity is an available option (uses DUST method from PRINSEQ)
 ```
@@ -77,3 +76,9 @@ The ```examples``` folder contains a simulated dataset from the BKV genome, with
 ./dist/extender_wrapper --complex-threshold -1 --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
 ```
 The output contig(s) for each input will be found in the ```output/contigs.fasta```, sorted by length and in the order they appeared in the input. For example, the output contigs for the input sequence ```>reference``` will be named ```>reference_1 reference```, ```>reference_2 reference```, etc. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
+
+Paired-end example:
+```
+./dist/extender_wrapper examples/vir_ref.fa --m1 examples/reads_1.fq --m2 examples/reads_2.fq
+```
+Paired alignments with incorrect orientation or fragment lengths longer than 500bp are excluded.$
