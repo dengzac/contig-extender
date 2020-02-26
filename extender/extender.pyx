@@ -115,8 +115,9 @@ cdef int STOP_LENGTH = 250
 cdef int NUM_THREADS = multiprocessing.cpu_count()
 cdef int COMPLEX_THRESHOLD = 15
 cdef int maxlength
-paired = False
-dirpath = ""
+MAXINS = 0
+PAIRED = False
+dirpath = os.getcwd()
 stack = []
 maxlength = 0
 cdef int idx
@@ -246,6 +247,8 @@ def iterate(
                 "--rfg",
                 "1000000,1000000",
                 "--no-unal",
+                "--maxins",
+                str(MAXINS)
             ],
             stdout=subprocess.PIPE,
             input=inputReads,
@@ -472,6 +475,11 @@ def regenerate_consensus(contig, inputReads, outFile):
     """Reprocess entire extended contig to correct any errors"""
     return iterate(contig, inputReads, outFile, exclude=False, analyze_mode=True)
 
+def calc_min_score(extend_tolerance, coverage, maxlength):
+    """Calculate extension minimum score given parameters"""
+    return int(
+            pow(10, -extend_tolerance) * maxlength * maxlength * coverage
+        )
 def _main(args):
     """Main function sets up directory structure, preprocesses data, and runs the search"""
     global dirpath
@@ -485,6 +493,7 @@ def _main(args):
     global NUM_THREADS
     global COMPLEX_THRESHOLD
     global PAIRED
+    global MAXINS
 
     # Read given arguments
     MIN_OVERLAP = args.min_overlap_length
@@ -494,6 +503,7 @@ def _main(args):
     NUM_THRADS = args.threads
     COMPLEX_THRESHOLD = args.complex_threshold
     PAIRED = args.paired
+    MAXINS = args.maxins
 
     print("Using bowtie2 at " + get_bowtie_path())
     if PAIRED:
@@ -567,9 +577,8 @@ def _main(args):
         readData = reads.read().encode()
 
     # Calculate minimum extension threshold
-    MIN_SCORE = int(
-        pow(10, -args.extend_tolerance) * maxlength * maxlength * args.coverage
-    )
+    MIN_SCORE = calc_min_score(args.extend_tolerance, args.coverage, maxlength)
+    
     print("Using extend threshold " + str(MIN_SCORE))
     matched_reads = set()
 

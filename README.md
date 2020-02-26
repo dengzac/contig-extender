@@ -17,6 +17,7 @@ Binaries for 64-bit Linux and Windows are provided in the ```dist``` folder.
 * pyinstaller
 * Cython
 * gcc
+* pytest (for testing)
 
 ## Building
 ### Linux
@@ -34,6 +35,8 @@ build.bat
 ```
 Executable is ```dist/extender_wrapper.exe```
 
+### Tests
+Unit and integration tests can be run at `tests/test.sh`
 ## Usage
 For best results, preprocess fastq by removing adaptors before attemping extension
 Filtering based on complexity is an available option (uses DUST method from PRINSEQ)
