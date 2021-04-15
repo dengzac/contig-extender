@@ -228,7 +228,7 @@ def iterate(
                 "-x",
                 dirpath + "/ref",
                 "--interleaved" if PAIRED else "-U",
-                "-",
+                inputReads,
                 "-L",
                 "20",
                 "--n-ceil",
@@ -252,7 +252,6 @@ def iterate(
                 str(MAXINS)
             ],
             stdout=subprocess.PIPE,
-            input=inputReads,
             stderr=subprocess.PIPE,
         )
     except Exception as e:
@@ -577,9 +576,8 @@ def _main(args):
             if len(lines) == 4:
                 maxlength = max(maxlength, len(lines[1]))
                 lines = []
-        reads.seek(0)
-        readData = reads.read().encode()
-
+        # reads.seek(0)
+        # readData = reads.read().encode()
     # Calculate minimum extension threshold
     MIN_SCORE = calc_min_score(args.extend_tolerance, args.coverage, maxlength)
     
@@ -608,7 +606,7 @@ def _main(args):
             start = time.perf_counter()
             res = iterate(
                 inFile,
-                readData,
+                args.reads,
                 output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa",
                 curPath=top[2],
                 allow_alt=(i != 0),
@@ -631,7 +629,7 @@ def _main(args):
                 if res > 100000:
                     print("Length limit exceeded")
                 analyze = regenerate_consensus(
-                    inFile, readData, output_dir + "/" + top[2] + "/consensus_temp.fa"
+                    inFile, args.reads, output_dir + "/" + top[2] + "/consensus_temp.fa"
                 )
 
                 shutil.copyfile(inFile, output_dir + "/" + top[2] + "/consensus.fa")
