@@ -354,6 +354,7 @@ def iterate(
 
     # Find positions with highly-scoring 2nd best bases, to indicate as ambiguous
     altconsensus = mainconsensus.copy()
+
     ambiguous = []
     for i in range(2 * maxlength + 2):
         sortedfreq = heapq.nlargest(
@@ -370,78 +371,80 @@ def iterate(
         ):
             ambiguous.append(i)
     ambiguous.sort()
+    scores = {}
     cdef int[:] ambig_arr = np.array(ambiguous, dtype=np.int32)
     cdef int ambig_size = len(ambiguous)
-    scores = {}
+    # To save memory, skip computing alternate consensus if branching is disabled
+    if BRANCH_LIMIT > 1:
 
-    # Extract ambiguous positions from each read
-    for ii in range(len(alignment_fields)):
-        fields = alignment_fields[ii]
-        pos = alignPos[ii]
+        # Extract ambiguous positions from each read
+        for ii in range(len(alignment_fields)):
+            fields = alignment_fields[ii]
+            pos = alignPos[ii]
 
-        c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
-        candidate = unicode(c_string)
-        free(c_string)
+            c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
+            candidate = unicode(c_string)
+            free(c_string)
 
-        if candidate in scores:
-            scores[candidate] += 1
-        else:
-            scores[candidate] = 1
+            if candidate in scores:
+                scores[candidate] += 1
+            else:
+                scores[candidate] = 1
 
-    sorted_candidates = sorted(scores.items(), key=lambda k: k[1])
-    sorted_candidates = list(
-        filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
-    )
-
-    if len(sorted_candidates) > 1:
-        for indx, pos in enumerate(ambiguous):
-            altconsensus[pos] = sorted_candidates[1][0][indx]
-
-    # Repeat process with the right side of the contig
-    ambiguous = []
-
-    for i in range(2 + len(referenceData[1]), len(extendedReference)):
-        sortedfreq = heapq.nlargest(
-            2, enumerate(mult_frequencies[i].values()), key=lambda x: x[1]
+        sorted_candidates = sorted(scores.items(), key=lambda k: k[1])
+        sorted_candidates = list(
+            filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
         )
-        sortedfreq2 = heapq.nlargest(
-            2, enumerate(frequencies[i].values()), key=lambda x: x[1]
+
+        if len(sorted_candidates) > 1:
+            for indx, pos in enumerate(ambiguous):
+                altconsensus[pos] = sorted_candidates[1][0][indx]
+
+        # Repeat process with the right side of the contig
+        ambiguous = []
+
+        for i in range(2 + len(referenceData[1]), len(extendedReference)):
+            sortedfreq = heapq.nlargest(
+                2, enumerate(mult_frequencies[i].values()), key=lambda x: x[1]
+            )
+            sortedfreq2 = heapq.nlargest(
+                2, enumerate(frequencies[i].values()), key=lambda x: x[1]
+            )
+            largestVal = sortedfreq[1][1]
+
+            if (
+                largestVal > MIN_SCORE2
+                and sortedfreq2[1][1] > sum(frequencies[i].values()) / 3
+            ):
+                ambiguous.append(i)
+        ambiguous.sort()
+        ambig_arr = np.array(ambiguous, dtype=np.int32)
+        ambig_size = len(ambiguous)
+
+        scores = {}
+
+        for ii in range(len(alignment_fields)):
+            fields = alignment_fields[ii]
+            pos = alignPos[ii]
+
+            read = fields[9]
+            c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
+            candidate = unicode(c_string)
+            free(c_string)
+            if candidate in scores:
+                scores[candidate] += 1
+            else:
+                scores[candidate] = 1
+        sorted_candidates = sorted(scores.items(), key=lambda k: k[1], reverse=True)
+        # Only keep solutions that are non-empty
+        sorted_candidates = list(
+            filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
         )
-        largestVal = sortedfreq[1][1]
 
-        if (
-            largestVal > MIN_SCORE2
-            and sortedfreq2[1][1] > sum(frequencies[i].values()) / 3
-        ):
-            ambiguous.append(i)
-    ambiguous.sort()
-    ambig_arr = np.array(ambiguous, dtype=np.int32)
-    ambig_size = len(ambiguous)
-
-    scores = {}
-
-    for ii in range(len(alignment_fields)):
-        fields = alignment_fields[ii]
-        pos = alignPos[ii]
-
-        read = fields[9]
-        c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
-        candidate = unicode(c_string)
-        free(c_string)
-        if candidate in scores:
-            scores[candidate] += 1
-        else:
-            scores[candidate] = 1
-    sorted_candidates = sorted(scores.items(), key=lambda k: k[1], reverse=True)
-    # Only keep solutions that are non-empty
-    sorted_candidates = list(
-        filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
-    )
-
-    # Add best set of ambiguous solutions as alternative consensus
-    if len(sorted_candidates) > 1:
-        for indx, pos in enumerate(ambiguous):
-            altconsensus[pos] = sorted_candidates[1][0][indx]
+        # Add best set of ambiguous solutions as alternative consensus
+        if len(sorted_candidates) > 1:
+            for indx, pos in enumerate(ambiguous):
+                altconsensus[pos] = sorted_candidates[1][0][indx]
 
     altconsensus = "".join(altconsensus).strip("AN")
     mainconsensus = "".join(mainconsensus).strip("AN")
