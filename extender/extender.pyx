@@ -29,6 +29,7 @@ from Bio import SeqIO
 # C imports
 cimport numpy as np
 from libc.stdlib cimport malloc, free
+from libc.stdint cimport int32_t, int64_t
 
 # C utility functions
 cdef int get_char_pos(char c):
@@ -278,7 +279,7 @@ def iterate(
     alignPosList = [int(a[3]) - 1 for a in alignment_fields]
 
     # C variables initialization
-    cdef long[:] alignPos = np.array(alignPosList)
+    cdef int64_t[:] alignPos = np.array(alignPosList).astype(np.int64)
     cdef int pos, quality, quality2
     cdef char n_char = 'N'
     cdef int c_pos, char_pos
