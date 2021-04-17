@@ -183,7 +183,7 @@ def iterate(
         data = list(SeqIO.parse(reference, "fasta"))
         referenceData = [">" + data[0].id, str(data[0].seq)]
         referenceData[1] = referenceData[1].strip("N")
-
+    startLength = len(referenceData[1])
     # Pads reference with Ns to allow alignments to overlap the edges
     extendedReference = (
         "A" + ("N" * (maxlength + 1)) + referenceData[1] + ("N" * (maxlength + 1)) + "A"
@@ -272,9 +272,9 @@ def iterate(
     alignments = result.stdout.decode().strip().split("\n")
     splitter = re.compile(r"\t+")
 
-    alignments = filter(lambda a: a[0] != "@" and a[3] != "1", alignments)
+    alignments = filter(lambda a: a[0] != "@", alignments)
     alignment_fields = [[x for x in re.split(splitter, o)] for o in alignments]
-
+    alignment_fields = list(filter(lambda a: a[3] != "0", alignment_fields))
     alignPosList = [int(a[3]) - 1 for a in alignment_fields]
 
     # C variables initialization
@@ -469,6 +469,9 @@ def iterate(
         out.writelines([referenceData[0] + "\n" + mainconsensus])
     if check_repeats(mainconsensus, STOP_LENGTH):
         print("Repeat found, stopping")
+        return -1
+    elif startLength > len(mainconsensus):
+        print("Contig length decreased, stopping")
         return -1
     else:
         return len(mainconsensus)

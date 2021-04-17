@@ -14,6 +14,9 @@ import tempfile
 from Bio import SeqIO
 import psutil
 import extender
+import coloredlogs, logging
+logger = logging.getLogger(__name__)
+coloredlogs.install(level="DEBUG")
 
 # Default parameters
 MIN_SCORE = 10000
@@ -123,6 +126,8 @@ if __name__ == "__main__":
     # No unpaired reads specified, check for paired files
     combined_reads, filename = tempfile.mkstemp(dir=os.getcwd())
     print(filename)
+    if ARGS.extend_tolerance < 2 or ARGS.extend_tolerance > 3.5:
+        logger.warning("Tolerance of " + str(ARGS.extend_tolerance) + " is outside recommended range [2, 3.5]")
     if not ARGS.reads:
         ARGS.paired = True
         combined_reads_f = os.fdopen(combined_reads, "w+")
