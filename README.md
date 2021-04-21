@@ -30,12 +30,12 @@ Executable is ```dist/extender_wrapper```
 
 ### Windows
 ```git clone https://github.com/dengzac/contig-extender.git
-Tested  using Windows10 with WLS (Windows Linux Subsystem)
-https://docs.microsoft.com/en-us/windows/wsl/install-win10
-gzipped input fastq file may not work on some Windows machine.
-Recommend using unzipped fastq
 
 ```
+Tested  using Windows10 with WLS (Windows Linux Subsystem)
+https://docs.microsoft.com/en-us/windows/wsl/install-win10
+gzipped input fastq file may not work on some Windows machine. We recommend using unzipped fastq on Windows10/WLS
+Native Windows distribution is no-longer supported.
 
 ### Tests
 Unit and integration tests can be run at `tests/test.sh`
@@ -112,6 +112,12 @@ optional arguments:
 
 ## Examples
 The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
+
+```
+./dist/extender_wrapper --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
+```
+The --complex-threshold -1 option ignore prinseq quality checking for faster execution.
+
 ```
 ./dist/extender_wrapper --complex-threshold -1 --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
 ```
@@ -122,3 +128,10 @@ Paired-end example:
 ./dist/extender_wrapper examples/vir_ref.fa --m1 examples/reads_1.fq --m2 examples/reads_2.fq --enable-pair-constraint
 ```
 Paired alignments with incorrect orientation or fragment lengths longer than 500bp are excluded.
+
+use higher value for --extend-tolerance [2.5, 3.5] (default 2.5) to force extension,  but risks higher chances of false extension.
+```
+./dist/extender_wrapper  --extend-tolerance 3.0  examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
+```
+
+
