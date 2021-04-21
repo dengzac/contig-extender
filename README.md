@@ -32,7 +32,7 @@ Executable is ```dist/extender_wrapper```
 
 Tested  using Windows10 with WLS (Windows Linux Subsystem). FYI 
 https://docs.microsoft.com/en-us/windows/wsl/install-win10
-. Gzipped input fastq file may not work on some Windows machine. We recommend using unzipped fastq on Windows10/WLS
+. Gzipped input fastq file may not work on some Windows machine. We recommend using unzipped fastq on Windows10/WLS.
 Native Windows distribution is no-longer supported.
 
 ### Tests
