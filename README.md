@@ -30,10 +30,12 @@ Executable is ```dist/extender_wrapper```
 
 ### Windows
 ```git clone https://github.com/dengzac/contig-extender.git
-cd contig-extender
-build.bat
+Tested  using Windows10 with WLS (Windows Linux Subsystem)
+https://docs.microsoft.com/en-us/windows/wsl/install-win10
+gzipped input fastq file may not work on some Windows machine.
+Recommend using unzipped fastq
+
 ```
-Executable is ```dist/extender_wrapper.exe```
 
 ### Tests
 Unit and integration tests can be run at `tests/test.sh`
