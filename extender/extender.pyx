@@ -29,6 +29,7 @@ from Bio import SeqIO
 # C imports
 cimport numpy as np
 from libc.stdlib cimport malloc, free
+from libc.stdint cimport int32_t, int64_t
 
 # C utility functions
 cdef int get_char_pos(char c):
@@ -182,7 +183,7 @@ def iterate(
         data = list(SeqIO.parse(reference, "fasta"))
         referenceData = [">" + data[0].id, str(data[0].seq)]
         referenceData[1] = referenceData[1].strip("N")
-
+    startLength = len(referenceData[1])
     # Pads reference with Ns to allow alignments to overlap the edges
     extendedReference = (
         "A" + ("N" * (maxlength + 1)) + referenceData[1] + ("N" * (maxlength + 1)) + "A"
@@ -227,7 +228,7 @@ def iterate(
                 "-x",
                 dirpath + "/ref",
                 "--interleaved" if PAIRED else "-U",
-                "-",
+                inputReads,
                 "-L",
                 "20",
                 "--n-ceil",
@@ -251,7 +252,6 @@ def iterate(
                 str(MAXINS)
             ],
             stdout=subprocess.PIPE,
-            input=inputReads,
             stderr=subprocess.PIPE,
         )
     except Exception as e:
@@ -272,13 +272,13 @@ def iterate(
     alignments = result.stdout.decode().strip().split("\n")
     splitter = re.compile(r"\t+")
 
-    alignments = filter(lambda a: a[0] != "@" and a[3] != "1", alignments)
+    alignments = filter(lambda a: a[0] != "@", alignments)
     alignment_fields = [[x for x in re.split(splitter, o)] for o in alignments]
-
+    alignment_fields = list(filter(lambda a: a[3] != "0", alignment_fields))
     alignPosList = [int(a[3]) - 1 for a in alignment_fields]
 
     # C variables initialization
-    cdef long[:] alignPos = np.array(alignPosList)
+    cdef int64_t[:] alignPos = np.array(alignPosList).astype(np.int64)
     cdef int pos, quality, quality2
     cdef char n_char = 'N'
     cdef int c_pos, char_pos
@@ -353,6 +353,7 @@ def iterate(
 
     # Find positions with highly-scoring 2nd best bases, to indicate as ambiguous
     altconsensus = mainconsensus.copy()
+
     ambiguous = []
     for i in range(2 * maxlength + 2):
         sortedfreq = heapq.nlargest(
@@ -369,78 +370,80 @@ def iterate(
         ):
             ambiguous.append(i)
     ambiguous.sort()
+    scores = {}
     cdef int[:] ambig_arr = np.array(ambiguous, dtype=np.int32)
     cdef int ambig_size = len(ambiguous)
-    scores = {}
+    # To save memory, skip computing alternate consensus if branching is disabled
+    if BRANCH_LIMIT > 1:
 
-    # Extract ambiguous positions from each read
-    for ii in range(len(alignment_fields)):
-        fields = alignment_fields[ii]
-        pos = alignPos[ii]
+        # Extract ambiguous positions from each read
+        for ii in range(len(alignment_fields)):
+            fields = alignment_fields[ii]
+            pos = alignPos[ii]
 
-        c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
-        candidate = unicode(c_string)
-        free(c_string)
+            c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
+            candidate = unicode(c_string)
+            free(c_string)
 
-        if candidate in scores:
-            scores[candidate] += 1
-        else:
-            scores[candidate] = 1
+            if candidate in scores:
+                scores[candidate] += 1
+            else:
+                scores[candidate] = 1
 
-    sorted_candidates = sorted(scores.items(), key=lambda k: k[1])
-    sorted_candidates = list(
-        filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
-    )
-
-    if len(sorted_candidates) > 1:
-        for indx, pos in enumerate(ambiguous):
-            altconsensus[pos] = sorted_candidates[1][0][indx]
-
-    # Repeat process with the right side of the contig
-    ambiguous = []
-
-    for i in range(2 + len(referenceData[1]), len(extendedReference)):
-        sortedfreq = heapq.nlargest(
-            2, enumerate(mult_frequencies[i].values()), key=lambda x: x[1]
+        sorted_candidates = sorted(scores.items(), key=lambda k: k[1])
+        sorted_candidates = list(
+            filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
         )
-        sortedfreq2 = heapq.nlargest(
-            2, enumerate(frequencies[i].values()), key=lambda x: x[1]
+
+        if len(sorted_candidates) > 1:
+            for indx, pos in enumerate(ambiguous):
+                altconsensus[pos] = sorted_candidates[1][0][indx]
+
+        # Repeat process with the right side of the contig
+        ambiguous = []
+
+        for i in range(2 + len(referenceData[1]), len(extendedReference)):
+            sortedfreq = heapq.nlargest(
+                2, enumerate(mult_frequencies[i].values()), key=lambda x: x[1]
+            )
+            sortedfreq2 = heapq.nlargest(
+                2, enumerate(frequencies[i].values()), key=lambda x: x[1]
+            )
+            largestVal = sortedfreq[1][1]
+
+            if (
+                largestVal > MIN_SCORE2
+                and sortedfreq2[1][1] > sum(frequencies[i].values()) / 3
+            ):
+                ambiguous.append(i)
+        ambiguous.sort()
+        ambig_arr = np.array(ambiguous, dtype=np.int32)
+        ambig_size = len(ambiguous)
+
+        scores = {}
+
+        for ii in range(len(alignment_fields)):
+            fields = alignment_fields[ii]
+            pos = alignPos[ii]
+
+            read = fields[9]
+            c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
+            candidate = unicode(c_string)
+            free(c_string)
+            if candidate in scores:
+                scores[candidate] += 1
+            else:
+                scores[candidate] = 1
+        sorted_candidates = sorted(scores.items(), key=lambda k: k[1], reverse=True)
+        # Only keep solutions that are non-empty
+        sorted_candidates = list(
+            filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
         )
-        largestVal = sortedfreq[1][1]
 
-        if (
-            largestVal > MIN_SCORE2
-            and sortedfreq2[1][1] > sum(frequencies[i].values()) / 3
-        ):
-            ambiguous.append(i)
-    ambiguous.sort()
-    ambig_arr = np.array(ambiguous, dtype=np.int32)
-    ambig_size = len(ambiguous)
-
-    scores = {}
-
-    for ii in range(len(alignment_fields)):
-        fields = alignment_fields[ii]
-        pos = alignPos[ii]
-
-        read = fields[9]
-        c_string = get_possible_consensus(fields[9], pos, ambig_arr, ambig_size)
-        candidate = unicode(c_string)
-        free(c_string)
-        if candidate in scores:
-            scores[candidate] += 1
-        else:
-            scores[candidate] = 1
-    sorted_candidates = sorted(scores.items(), key=lambda k: k[1], reverse=True)
-    # Only keep solutions that are non-empty
-    sorted_candidates = list(
-        filter(lambda x: len(x[0].replace("N", "")) > 0, sorted_candidates)
-    )
-
-    # Add best set of ambiguous solutions as alternative consensus
-    if len(sorted_candidates) > 1:
-        for indx, pos in enumerate(ambiguous):
-            altconsensus[pos] = sorted_candidates[1][0][indx]
+        # Add best set of ambiguous solutions as alternative consensus
+        if len(sorted_candidates) > 1:
+            for indx, pos in enumerate(ambiguous):
+                altconsensus[pos] = sorted_candidates[1][0][indx]
 
     altconsensus = "".join(altconsensus).strip("AN")
     mainconsensus = "".join(mainconsensus).strip("AN")
@@ -466,6 +469,9 @@ def iterate(
         out.writelines([referenceData[0] + "\n" + mainconsensus])
     if check_repeats(mainconsensus, STOP_LENGTH):
         print("Repeat found, stopping")
+        return -1
+    elif startLength > len(mainconsensus):
+        print("Contig length decreased, stopping")
         return -1
     else:
         return len(mainconsensus)
@@ -573,9 +579,8 @@ def _main(args):
             if len(lines) == 4:
                 maxlength = max(maxlength, len(lines[1]))
                 lines = []
-        reads.seek(0)
-        readData = reads.read().encode()
-
+        # reads.seek(0)
+        # readData = reads.read().encode()
     # Calculate minimum extension threshold
     MIN_SCORE = calc_min_score(args.extend_tolerance, args.coverage, maxlength)
     
@@ -604,7 +609,7 @@ def _main(args):
             start = time.perf_counter()
             res = iterate(
                 inFile,
-                readData,
+                args.reads,
                 output_dir + "/" + top[2] + "/" + str(i + 1) + ".fa",
                 curPath=top[2],
                 allow_alt=(i != 0),
@@ -627,7 +632,7 @@ def _main(args):
                 if res > 100000:
                     print("Length limit exceeded")
                 analyze = regenerate_consensus(
-                    inFile, readData, output_dir + "/" + top[2] + "/consensus_temp.fa"
+                    inFile, args.reads, output_dir + "/" + top[2] + "/consensus_temp.fa"
                 )
 
                 shutil.copyfile(inFile, output_dir + "/" + top[2] + "/consensus.fa")
