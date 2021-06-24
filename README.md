@@ -21,6 +21,8 @@ Binaries for 64-bit Linux and Windows are provided in the ```dist``` folder.
 
 ## Building
 ### Linux
+Use the precompiled dist/extender_wrapper is the preferred way. It should include every required components. 
+The following manual installation is for advanced users.
 ```
 git clone https://github.com/dengzac/contig-extender.git
 cd contig-extender
