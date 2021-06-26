@@ -26,7 +26,7 @@ The following manual installation is for advanced users.
 ```
 git clone https://github.com/dengzac/contig-extender.git
 cd contig-extender
-./build.sh
+./build.sh #do not run this
 ```
 Executable is ```dist/extender_wrapper```
 
