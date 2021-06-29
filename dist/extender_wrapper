@@ -1,2 +1,2 @@
 sudo docker inspect "dengzac/contig-extender:v0.1" >/dev/null 2>&1 || sudo docker pull dengzac/contig-extender:v0.1
-sudo docker run -it --rm -v $(pwd):/app/mnt --workdir /app/mnt dengzac/contig-extender:extender_wrapper "$@"
+sudo docker run -it --rm -v $(pwd):/app/mnt --workdir /app/mnt dengzac/contig-extender:v0.1 "$@"
