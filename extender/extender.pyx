@@ -16,7 +16,6 @@ import heapq
 import os.path
 import psutil
 import gzip
-from distutils.version import LooseVersion
 from mimetypes import guess_type
 import sys
 from pathlib import Path
@@ -24,6 +23,7 @@ import multiprocessing
 import cython
 import array
 import itertools
+from packaging import version
 from Bio import SeqIO
 
 # C imports
@@ -133,7 +133,7 @@ def check_bowtie_ver(path):
     except:
         pass
     else:
-        if LooseVersion(version_string) < LooseVersion("2.3.4"):
+        if version.parse(version_string) < version.parse("2.3.4"):
             raise RuntimeError(
                 "Current bowtie2 version "
                 + version_string
