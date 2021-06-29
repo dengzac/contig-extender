@@ -6,13 +6,17 @@ ContigExtender, was developed to extend contigs, complementing de novo assembly.
 
 ## Installation
 
-First, [install Docker](https://docs.docker.com/get-docker/)
+The only supported operating system is Linux.
+
+To install, first [install Docker](https://docs.docker.com/get-docker/)
+
 Then, clone this repository with
 ```
 git clone https://github.com/dengzac/contig-extender.git
 cd contig-extender
 ```
-Finally, run `./dist/extender_wrapper` in PowerShell or Bash. This script will automatically download the Docker image and run ContigExtender with the parameters that are passed to it.
+
+Finally, run `./dist/extender_wrapper`. This script will automatically download the Docker image and run ContigExtender with the parameters that are passed to it.
 
 ## Examples
 The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
