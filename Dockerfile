@@ -9,4 +9,7 @@ COPY extender extender
 COPY build.sh build.sh
 COPY setup.py setup.py
 RUN ./build.sh
-ENTRYPOINT ["python3", "extender/extender_wrapper.py"]
+RUN ["mkdir", "-p", "/app/mnt"]
+ENV PRINSEQ=/app/extender/
+#COPY extender/prinseq-lite.pl /app/mnt/
+ENTRYPOINT ["python3", "../extender/extender_wrapper.py"]
