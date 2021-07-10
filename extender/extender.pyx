@@ -16,7 +16,6 @@ import heapq
 import os.path
 import psutil
 import gzip
-from distutils.version import LooseVersion
 from mimetypes import guess_type
 import sys
 from pathlib import Path
@@ -24,6 +23,7 @@ import multiprocessing
 import cython
 import array
 import itertools
+from packaging import version as ver
 from Bio import SeqIO
 
 # C imports
@@ -133,7 +133,7 @@ def check_bowtie_ver(path):
     except:
         pass
     else:
-        if LooseVersion(version_string) < LooseVersion("2.3.4"):
+        if ver.parse(version_string) < ver.parse("2.3.4"):
             raise RuntimeError(
                 "Current bowtie2 version "
                 + version_string
@@ -536,9 +536,10 @@ def _main(args):
         try:
             # Look for prinseq library in either pyinstaller package or script location
             p_path = os.path.join(
-                sys._MEIPASS if hasattr(sys, "_MEIPASS") else pathlib.Path().absolute(),
+                os.environ["PRINSEQ"] if "PRINSEQ" in os.environ else pathlib.Path().absolute(),
                 "prinseq-lite.pl",
             )
+            print(pathlib.Path().absolute())
             if not os.path.isfile(p_path):
                 raise RuntimeError("Prinseq library not found")
             filter_input = open_file(args.reads).read().encode()

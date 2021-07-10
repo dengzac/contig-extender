@@ -2,43 +2,46 @@
 ## Description
 ContigExtender, was developed to extend contigs, complementing de novo assembly. ContigExtender employs a novel recursive Overlap Layout Candidates (r-OLC) strategy that explores multiple extending paths to achieve longer and highly accurate contigs. ContigExtender is effective for extending contigs significantly in in silico synthesized and real metagenomics datasets.
 
-Binaries for 64-bit Linux and Windows are provided in the ```dist``` folder.
 ![extension process](https://i.imgur.com/w4QiDIj.png "extension process")
-## Dependencies
-### Runtime:
-* Bowtie2 2.3.4+
-* Perl
 
-### Development: 
-* Python 3.2+ (with development headers)
-* numpy
-* BioPython
-* setuptools
-* pyinstaller
-* Cython
-* gcc
-* pytest (for testing)
+## Installation
 
-## Building
-### Linux
-Use the precompiled dist/extender_wrapper is the preferred way. It should include every required components. 
-The following manual installation is for advanced users.
+The only supported operating system is Linux.
+
+To install, first [install Docker](https://docs.docker.com/get-docker/)
+
+Then, clone this repository with
 ```
 git clone https://github.com/dengzac/contig-extender.git
 cd contig-extender
-./build.sh #do not run this
 ```
-Executable is ```dist/extender_wrapper```
 
-### Windows
+Finally, run `./dist/extender_wrapper`. This script will automatically download the Docker image and run ContigExtender with the parameters that are passed to it.
 
-Tested  using Windows10 with WLS (Windows Linux Subsystem). FYI 
-https://docs.microsoft.com/en-us/windows/wsl/install-win10
-. Gzipped input fastq file may not work on some Windows machine. We recommend using unzipped fastq on Windows10/WLS.
-Native Windows distribution is no-longer supported.
+## Examples
+The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
 
-### Tests
-Unit and integration tests can be run at `tests/test.sh`
+```
+./dist/extender_wrapper --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
+```
+The --complex-threshold -1 option ignore prinseq quality checking for faster execution.
+
+```
+./dist/extender_wrapper --complex-threshold -1 --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
+```
+The output contig(s) for each input will be found in the ```output/contigs.fasta```, sorted by length and in the order they appeared in the input. For example, the output contigs for an input sequence ```>reference``` would be named ```>reference_1 reference```, ```>reference_2 reference```, etc. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
+
+Paired-end example:
+```
+./dist/extender_wrapper examples/vir_ref.fa --m1 examples/reads_1.fq --m2 examples/reads_2.fq --enable-pair-constraint
+```
+Paired alignments with incorrect orientation or fragment lengths longer than 500bp are excluded.
+
+use higher value for --extend-tolerance [2.5, 3.5] (default 2.5) to force extension,  but risks higher chances of false extension.
+```
+./dist/extender_wrapper  --extend-tolerance 3.0  examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
+```
+
 ## Usage
 For best results, preprocess fastq by removing adaptors before attemping extension
 Filtering based on complexity is an available option (uses DUST method from PRINSEQ)
@@ -110,28 +113,15 @@ optional arguments:
                         (default: 500)
 ```
 
-## Examples
-The ```examples``` folder contains a simulated dataset from the BKV genome, with a set of reads and a seed contig. To extend, run the following command:
 
-```
-./dist/extender_wrapper --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
-```
-The --complex-threshold -1 option ignore prinseq quality checking for faster execution.
+## Building from source
 
+Install Docker and build the image with 
 ```
-./dist/extender_wrapper --complex-threshold -1 --coverage 50 examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
+sudo docker build .
 ```
-The output contig(s) for each input will be found in the ```output/contigs.fasta```, sorted by length and in the order they appeared in the input. For example, the output contigs for an input sequence ```>reference``` would be named ```>reference_1 reference```, ```>reference_2 reference```, etc. To verify the accuracy of the extended contig, the reference genome is provided in ```BKV.fasta```.
 
-Paired-end example:
-```
-./dist/extender_wrapper examples/vir_ref.fa --m1 examples/reads_1.fq --m2 examples/reads_2.fq --enable-pair-constraint
-```
-Paired alignments with incorrect orientation or fragment lengths longer than 500bp are excluded.
 
-use higher value for --extend-tolerance [2.5, 3.5] (default 2.5) to force extension,  but risks higher chances of false extension.
-```
-./dist/extender_wrapper  --extend-tolerance 3.0  examples/BKV_seed_1000_867.fa examples/BKV_250_50_0.01_0_.fastq
-```
+
 
 
