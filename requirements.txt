@@ -3,7 +3,7 @@ biopython==1.79
 coloredlogs==15.0.1
 Cython==0.29.23
 humanfriendly==9.2 
-numpy==1.21.0
+numpy==1.22.0
 packaging==20.9
 psutil==5.8.0
 pyinstaller==4.3
